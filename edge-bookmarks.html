@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edge 收藏夹管理器 v5</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
+
+/* 头部 */
+.header{background:linear-gradient(135deg,#0078d4,#005a9e);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.15);flex-wrap:wrap}
+.header h1{font-size:18px;font-weight:600;white-space:nowrap}
+.hdr-btns{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.btn{padding:7px 14px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn-primary{background:rgba(255,255,255,.18);color:#fff}
+.btn-success{background:#28a745;color:#fff}
+
+/* 搜索栏 */
+.search-bar{margin:16px 24px 0}
+.search-input{width:100%;padding:10px 16px 10px 40px;border:1px solid #ddd;border-radius:10px;font-size:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.44.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") 12px center no-repeat;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.search-input:focus{outline:none;border-color:#0078d4;box-shadow:0 0 0 3px rgba(0,120,212,.12)}
+
+/* 统计栏 */
+.stats-bar{display:flex;gap:18px;padding:10px 24px;font-size:12px;color:#888}
+
+/* 最近使用 */
+.recent-section{background:#fff;margin:0 24px;border-radius:12px;padding:14px 20px 10px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.recent-section h2{font-size:14px;color:#666;margin-bottom:10px}
+.recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.recent-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f0f7ff;border-radius:8px;cursor:pointer;font-size:12.5px;transition:all .15s;border:1px solid transparent;position:relative}
+.recent-item:hover{background:#dbeafe;border-color:#93c5fd}
+.recent-item .favicon{width:32px;height:32px;flex-shrink:0}
+.recent-item .rname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;color:#0078d4}
+.recent-item .rdel{width:22px;height:22px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:none;cursor:pointer;font-size:11px;background:transparent;color:#999;transition:all .15s;flex-shrink:0;opacity:0}
+.recent-item:hover .rdel{opacity:1}
+.recent-item .rdel:hover{background:#fde8e8;color:#c23}
+
+/* 主内容区 */
+.main-content{padding:12px 24px 24px}
+.root-section{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:8px 0 12px;margin-bottom:16px}
+.root-title{padding:8px 20px;font-size:13px;color:#999;font-weight:600;display:flex;align-items:center;gap:8px}
+.root-title .rtdel{margin-left:auto;color:#999;background:transparent;border:1px solid #ddd;cursor:pointer;padding:3px 10px;border-radius:5px;transition:all .15s;display:inline-flex;align-items:center;gap:4px;font-size:12px}
+.root-title .rtdel:hover{background:#fde8e8;color:#c23;border-color:#fca5a5}
+
+/* 文件夹 */
+.folder{margin:0 12px 2px}
+.folder-header{display:flex;align-items:center;padding:7px 12px;border-radius:8px;cursor:pointer;user-select:none;transition:background .15s;gap:4px}
+.folder-header:hover{background:#f9fafb}
+.folder-header.open{background:#f0f7ff}
+.folder-arrow{width:16px;text-align:center;font-size:10px;color:#0078d4;transition:transform .2s;flex-shrink:0}
+.folder-header.open .folder-arrow{transform:rotate(90deg)}
+.drag-handle{cursor:grab;opacity:0;transition:opacity .15s;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:#bbb;font-size:14px;width:20px;user-select:none}
+.folder-header:hover .drag-handle{opacity:1}
+.folder-name{font-weight:600;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#1a1a1a}
+.folder-count{font-size:11px;color:#aaa;margin-left:6px;flex-shrink:0}
+.folder-actions{display:flex;gap:4px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.folder-header:hover .folder-actions{opacity:1}
+.folder.empty-folder .folder-actions{opacity:1}
+.folder-children{display:none;padding-left:8px}
+.folder-children.show{display:block}
+
+/* 书签卡片网格 */
+.bm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;padding:4px 12px 4px 40px}
+.bm-card{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f0f7ff;border-radius:8px;font-size:12.5px;transition:all .15s;border:1px solid transparent;position:relative}
+.bm-card:hover{background:#dbeafe;border-color:#93c5fd}
+.bm-card .favicon{width:32px;height:32px;flex-shrink:0}
+.bm-card .bm-link{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-decoration:none;color:#0078d4;cursor:pointer;display:block;min-width:0}
+.bm-card .bm-link:hover{text-decoration:underline}
+.bm-card .bm-actions{display:flex;gap:3px;flex-shrink:0;opacity:0;transition:opacity .15s}
+.bm-card:hover .bm-actions{opacity:1}
+
+/* 操作按钮 */
+.btn-sm{width:26px;height:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;border:none;cursor:pointer;font-size:12px;background:transparent;color:#666;transition:all .15s;position:relative;z-index:5}
+.btn-sm:hover{background:#e8e8e8}
+.btn-sm.btn-del:hover{background:#fde8e8;color:#c23}
+.empty-folder .btn-sm.btn-del{opacity:1;color:#c23;background:#fde8e8}
+
+/* 添加书签链接 */
+.add-bm-link{display:inline-block;padding:4px 12px;margin:2px 0 2px 40px;font-size:12px;color:#0078d4;background:none;border:none;cursor:pointer;border-radius:6px;text-decoration:none}
+.add-bm-link:hover{background:#f0f7ff;text-decoration:none}
+
+/* 空状态 */
+.empty-state{text-align:center;padding:60px 20px;color:#999}
+.empty-state .icon{font-size:48px;margin-bottom:16px}
+
+/* 模态框 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:24px;width:460px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h3{margin-bottom:18px;font-size:17px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;margin-bottom:5px;font-size:13px;color:#555;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;background:#fff}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#0078d4;box-shadow:0 0 0 3px rgba(0,120,212,.12)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.btn-cancel{padding:7px 18px;border:1px solid #ddd;border-radius:6px;cursor:pointer;font-size:13px;background:#f8f8f8;color:#555}
+.btn-cancel:hover{background:#eee}
+.btn-confirm{padding:7px 18px;border:none;border-radius:6px;cursor:pointer;font-size:13px;background:#0078d4;color:#fff;font-weight:500}
+.btn-confirm:hover{background:#006abe}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;color:#fff;padding:11px 20px;border-radius:8px;font-size:13.5px;z-index:2000;animation:slideIn .25s ease;max-width:360px;pointer-events:none}
+.toast.success{background:#28a745}
+.toast.error{background:#dc3545}
+.toast.info{background:#0078d4}
+@keyframes slideIn{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* 拖拽 */
+.dragging{opacity:0.35 !important}
+.drop-before{box-shadow:0 -3px 0 0 #0078d4 !important}
+.drop-after{box-shadow:0 3px 0 0 #0078d4 !important}
+.drop-inside{background:#dbeafe !important;outline:2px dashed #0078d4 !important;outline-offset:-2px}
+
+/* 确认删除弹窗 */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1100;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:#fff;border-radius:12px;padding:24px;width:360px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center}
+.confirm-box p{margin-bottom:20px;font-size:15px;line-height:1.5;white-space:pre-line}
+.confirm-btns{display:flex;gap:10px;justify-content:center}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#128278; Edge 收藏夹管理器</h1>
+  <div class="hdr-btns">
+    <button class="btn btn-primary" id="btnImport">&#128229; 导入</button>
+    <button class="btn btn-primary" id="btnExport">&#128230; 导出HTML</button>
+    <button class="btn btn-success" id="btnAddBm">&#65291; 添加书签</button>
+    <button class="btn btn-primary" id="btnAddFolder">&#128193; 新建文件夹</button>
+    <button class="btn btn-primary" id="btnSync">&#128260; 同步Edge</button>
+    <button class="btn btn-primary" id="btnCleanup" style="background:rgba(220,53,69,.3)">&#128465; 清理空分区</button>
+    <input type="file" id="fileInput" accept=".json,.html" style="display:none">
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+<div class="search-bar"><input type="text" class="search-input" id="searchInput" placeholder="搜索书签名称或网址..."></div>
+
+<div class="recent-section" id="recentSection" style="display:none">
+  <h2>&#9201; 最近使用</h2>
+  <div class="recent-grid" id="recentGrid"></div>
+</div>
+
+<div class="main-content" id="mainContent">
+  <div class="empty-state">
+    <div class="icon">&#128278;</div>
+    <p>暂无收藏夹数据</p>
+    <p style="font-size:13px;color:#bbb;margin-top:8px">点击顶部「同步Edge」按钮导入收藏夹</p>
+  </div>
+</div>
+
+<!-- 添加/编辑书签 -->
+<div class="modal-overlay" id="bmModal">
+  <div class="modal">
+    <h3 id="bmModalTitle">添加书签</h3>
+    <div class="form-group"><label>名称</label><input type="text" id="bmName" placeholder="输入书签名称" autocomplete="off"></div>
+    <div class="form-group"><label>URL</label><input type="text" id="bmUrl" placeholder="https://..." autocomplete="off"></div>
+    <div class="form-group"><label>所属文件夹</label><select id="bmFolder"></select></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="bmCancelBtn">取消</button>
+      <button class="btn-confirm" id="bmSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新建文件夹 -->
+<div class="modal-overlay" id="folderModal">
+  <div class="modal">
+    <h3>新建文件夹</h3>
+    <div class="form-group"><label>文件夹名称</label><input type="text" id="folderNameIn" placeholder="输入文件夹名称" autocomplete="off"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="folderCancelBtn">取消</button>
+      <button class="btn-confirm" id="folderSaveBtn">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- 同步帮助 -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal" style="max-width:520px;max-height:85vh;display:flex;flex-direction:column">
+    <h3 style="flex-shrink:0">&#128260; 同步 Edge 收藏夹</h3>
+    <div style="font-size:13px;color:#444;line-height:1.7;overflow-y:auto;flex:1;padding-right:4px">
+      <p style="margin-bottom:12px">Edge 收藏夹文件路径：</p>
+      <div style="background:#f4f6f8;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-family:monospace;font-size:12.5px;word-break:break-all;display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        <span style="flex:1">%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Bookmarks</span>
+        <button id="btnCopyPath" style="padding:4px 12px;font-size:12px;border:1px solid #0078d4;background:#fff;color:#0078d4;border-radius:5px;cursor:pointer;white-space:nowrap">复制路径</button>
+      </div>
+      <p style="margin-bottom:10px;font-weight:600">方法一：直接选择 Bookmarks 文件</p>
+      <ol style="padding-left:18px;margin-bottom:14px;font-size:12.5px">
+        <li style="margin-bottom:6px">按 <code style="background:#eee;padding:1px 5px;border-radius:4px">Win+R</code>，输入 <code style="background:#eee;padding:1px 5px;border-radius:4px">%LOCALAPPDATA%\Microsoft\Edge\User Data\Default</code>，回车</li>
+        <li style="margin-bottom:6px">找到 <code style="background:#eee;padding:1px 5px;border-radius:4px">Bookmarks</code> 文件（无后缀名）</li>
+        <li style="margin-bottom:6px">点击下方「选择文件」按钮，选中即可导入（仅导入收藏夹栏内容）</li>
+      </ol>
+      <p style="margin-bottom:10px;font-weight:600">方法二：从 Edge 导出 HTML</p>
+      <ol style="padding-left:18px;margin-bottom:14px;font-size:12.5px">
+        <li style="margin-bottom:6px">在 Edge 中按 <code style="background:#eee;padding:1px 5px;border-radius:4px">Ctrl+Shift+O</code> 打开收藏夹</li>
+        <li style="margin-bottom:6px">点击「导出收藏夹」，保存为 HTML 文件</li>
+        <li style="margin-bottom:6px">在本工具中点击「导入」按钮，选择该 HTML 文件</li>
+      </ol>
+    </div>
+    <div class="modal-actions" style="flex-shrink:0;margin-top:12px">
+      <button class="btn-cancel" id="syncCancelBtn">关闭</button>
+      <button class="btn-confirm" id="syncSelectBtn">选择文件</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认删除 -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <p id="confirmMsg">确定要删除吗？</p>
+    <div class="confirm-btns">
+      <button class="btn-cancel" id="confirmNo">取消</button>
+      <button class="btn-confirm" id="confirmYes" style="background:#dc3545">删除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   Edge 收藏夹管理器 v5
+   所有动态按钮使用 onclick 内联，零事件委托，零动态绑定
+   ================================================================ */
+(function(){
+'use strict';
+
+var SK='edge_bm_data', data=null, editId=null, dragSt=null, delId=null;
+function $(id){return document.getElementById(id)}
+function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):''}
+function uid(){return 'b'+Date.now().toString(36)+Math.random().toString(36).substr(2,5)}
+function domain(u){try{return new URL(u).hostname}catch(e){return ''}}
+function fav(u){var d=domain(u);return d?'https://www.google.com/s2/favicons?domain='+encodeURIComponent(d)+'&sz=32':''}
+function toast(m,t){var e=document.createElement('div');e.className='toast '+(t||'info');e.textContent=m;document.body.appendChild(e);setTimeout(function(){e.style.opacity='0';e.style.transition='opacity .3s';setTimeout(function(){e.remove()},300)},2500)}
+function save(){if(data)localStorage.setItem(SK,JSON.stringify(data))}
+function load(){var r=localStorage.getItem(SK);if(r)try{data=JSON.parse(r);return true}catch(e){}return false}
+
+// ===== 数据查找 =====
+function findById(id,arr){
+  if(!arr){if(!data)return null;var k=Object.keys(data.roots);for(var i=0;i<k.length;i++){var r=findById(id,data.roots[k[i]]);if(r)return r}return null}
+  for(var i=0;i<arr.length;i++){if(arr[i].id===id)return arr[i];if(arr[i].children){var r=findById(id,arr[i].children);if(r)return r}}return null}
+function findParent(id,arr){
+  if(!arr){if(!data)return null;var k=Object.keys(data.roots);for(var i=0;i<k.length;i++){var r=findParent(id,data.roots[k[i]]);if(r)return r}return null}
+  for(var i=0;i<arr.length;i++){if(arr[i].id===id)return arr;if(arr[i].children){var r=findParent(id,arr[i].children);if(r)return r}}return null}
+function isDesc(anc,tgt){var n=findById(anc);if(!n||!n.children)return false;function w(a){for(var i=0;i<a.length;i++){if(a[i].id===tgt)return true;if(a[i].children&&w(a[i].children))return true}return false}return w(n.children)}
+function cntBm(a){var c=0;if(!a)return 0;for(var i=0;i<a.length;i++){if(a[i].type==='bookmark')c++;else if(a[i].children)c+=cntBm(a[i].children)}return c}
+function cntFd(a){var c=0;if(!a)return 0;for(var i=0;i<a.length;i++){if(a[i].type==='folder'){c++;c+=cntFd(a[i].children)}}return c}
+function resolvePath(p){if(!p||!data)return null;var s=p.indexOf('::');if(s<0)return null;var rn=p.substring(0,s),rest=p.substring(s+2),arr=data.roots[rn];if(!arr)return null;if(!rest)return arr;var pts=rest.split('/');for(var i=0;i<pts.length;i++){var f=null;for(var j=0;j<arr.length;j++){if(arr[j].type==='folder'&&arr[j].name===pts[i]){f=arr[j];break}}if(!f||!f.children)return null;arr=f.children}return arr}
+
+// ===== 最近使用 =====
+function buildRecent(){if(!data)return;var all=[];function c(a){for(var i=0;i<a.length;i++){if(a[i].type==='bookmark')all.push(a[i]);if(a[i].children)c(a[i].children)}}var k=Object.keys(data.roots);for(var i=0;i<k.length;i++)c(data.roots[k[i]]);all.sort(function(a,b){return(b.lastUsed||0)-(a.lastUsed||0)});data.recent=[];for(var i=0;i<Math.min(10,all.length);i++)data.recent.push({id:all[i].id,name:all[i].name,url:all[i].url})}
+function trackClick(id){if(!data)return;var item=findById(id);if(item){item.lastUsed=Date.now();buildRecent();save();renderRecent()}}
+
+// ===== 导入解析 =====
+function parseEdgeJson(json){var res=[],bar=json.roots&&json.roots.bookmark_bar;if(!bar)return res;function w(n,p){if(n.type==='folder'){var f={type:'folder',name:n.name||'',id:n.id||uid(),children:[]};var ch=n.children||[];for(var i=0;i<ch.length;i++)w(ch[i],f.children);p.push(f)}else if(n.type==='url'){p.push({type:'bookmark',name:n.name||'',url:n.url||'',id:n.id||uid(),lastUsed:0})}}var ch=bar.children||[];for(var i=0;i<ch.length;i++)w(ch[i],res);return res}
+function parseHtmlBookmarks(txt){var res=[],parser=new DOMParser(),doc=parser.parseFromString(txt,'text/html'),dts=doc.querySelectorAll('dt'),barDt=null;for(var i=0;i<dts.length;i++){var h3=dts[i].querySelector(':scope>h3');if(h3){var nm=(h3.textContent||'').trim();if(nm==='收藏夹栏'||nm==='Favorites bar'||nm==='Bookmarks bar'){barDt=dts[i];break}}}if(!barDt)return res;var dl=barDt.querySelector(':scope+dl')||barDt.parentElement.querySelector(':scope>dl');if(!dl)return res;var cds=dl.querySelectorAll(':scope>dt');function w(dt,p){var a=dt.querySelector(':scope>a'),h=dt.querySelector(':scope>h3');if(a)p.push({type:'bookmark',name:a.textContent||'',url:a.getAttribute('href')||'',id:uid(),lastUsed:0});else if(h){var f={type:'folder',name:h.textContent||'未命名',id:uid(),children:[]},pe=h.parentElement;if(pe){var cdl=pe.querySelector(':scope>dl');if(cdl){var c2=cdl.querySelectorAll(':scope>dt');for(var k=0;k<c2.length;k++)w(c2[k],f.children)}}p.push(f)}}for(var j=0;j<cds.length;j++)w(cds[j],res);return res}
+function handleImport(file){if(!file)return;var reader=new FileReader();reader.onload=function(e){var txt=e.target.result,items=[];try{var json=JSON.parse(txt);if(json.roots){items=parseEdgeJson(json)}else throw 0}catch(err){items=parseHtmlBookmarks(txt)}if(!items.length){toast('无法识别文件或收藏夹栏为空','error');return}if(!data)data={roots:{},recent:[]};var bk='_main';if(!data.roots[bk])data.roots[bk]=[];var existUrls={};(function collectAll(arr){for(var i=0;i<arr.length;i++){if(arr[i].type==='bookmark'&&arr[i].url)existUrls[arr[i].url.toLowerCase()]=true;if(arr[i].children)collectAll(arr[i].children)}})(data.roots[bk]);var added=0,skipped=0;for(var i=0;i<items.length;i++){if(items[i].type==='bookmark'&&existUrls[(items[i].url||'').toLowerCase()]){skipped++;continue}data.roots[bk].push(items[i]);added++}toast('导入完成：新增 '+added+' 项'+(skipped?'，跳过 '+skipped+' 个重复':''),'success');buildRecent();save();renderAll()};reader.readAsText(file)}
+
+// ===== 导出 =====
+function doExport(){if(!data||!Object.keys(data.roots).length){toast('没有数据','error');return}var ls=['<!DOCTYPE NETSCAPE-Bookmark-file-1>','<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">','<TITLE>Bookmarks</TITLE>','<H1>Bookmarks</H1>','<DL><p>'];function w(it,ind){var p='  '.repeat(ind);if(it.type==='folder'){ls.push(p+'<DT><H3>'+esc(it.name)+'</H3>');ls.push(p+'<DL><p>');var ch=it.children||[];for(var i=0;i<ch.length;i++)w(ch[i],ind+1);ls.push(p+'</DL><p>')}else ls.push(p+'<DT><A HREF="'+esc(it.url)+'">'+esc(it.name)+'</A>')}var ks=Object.keys(data.roots);for(var i=0;i<ks.length;i++){ls.push('  <DT><H3>'+esc(ks[i])+'</H3>');ls.push('  <DL><p>');var it=data.roots[ks[i]];for(var j=0;j<it.length;j++)w(it[j],2);ls.push('  </DL><p>')}ls.push('</DL><p>');var blob=new Blob([ls.join('\n')],{type:'text/html;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='edge_bookmarks.html';document.body.appendChild(a);a.click();a.remove();toast('已导出','success')}
+
+// ===== 删除 =====
+function reqDel(id){delId=id;var it=findById(id),m=it?'确定要删除「'+it.name+'」吗？':'确定要删除吗？';if(it&&it.type==='folder'){var c=cntBm(it.children);if(c>0)m+='\n（包含 '+c+' 个书签）'}$('confirmMsg').textContent=m;$('confirmOverlay').classList.add('show')}
+function reqDelRoot(rn){delId='__root__:'+rn;var items=data.roots[rn]||[],bm=cntBm(items),fd=cntFd(items);var m='确定要删除整个「'+rn+'」分区吗？';if(bm+fd>0)m+='\n（包含 '+fd+' 个文件夹、'+bm+' 个书签）';$('confirmMsg').textContent=m;$('confirmOverlay').classList.add('show')}
+function doDel(){if(!delId)return;if(delId.indexOf('__root__:')===0){var rn=delId.substring(8);delete data.roots[rn];delId=null;$('confirmOverlay').classList.remove('show');buildRecent();save();renderAll();toast('已删除分区','info');return}var pa=findParent(delId);if(pa)for(var i=0;i<pa.length;i++){if(pa[i].id===delId){pa.splice(i,1);break}}delId=null;$('confirmOverlay').classList.remove('show');buildRecent();save();renderAll();toast('已删除','info')}
+
+// ===== CRUD =====
+function openEditBm(id){var it=findById(id);if(!it||it.type!=='bookmark')return;editId=id;$('bmModalTitle').textContent='编辑书签';$('bmName').value=it.name||'';$('bmUrl').value=it.url||'';fillSel(id);$('bmModal').classList.add('show');setTimeout(function(){$('bmName').focus()},100)}
+function openAddBm(dr,dp){editId=null;$('bmModalTitle').textContent='添加书签';$('bmName').value='';$('bmUrl').value='';fillSel(null);if(dr){var s=$('bmFolder'),v=dr+'::'+(dp||'');for(var i=0;i<s.options.length;i++){if(s.options[i].value===v){s.selectedIndex=i;break}}}$('bmModal').classList.add('show');setTimeout(function(){$('bmName').focus()},100)}
+function fillSel(cid){var sel=$('bmFolder');sel.innerHTML='';if(!data)return;var ks=Object.keys(data.roots);for(var i=0;i<ks.length;i++)addOpt(sel,ks[i],'',0);if(cid){var pi=pathOf(cid);if(pi)for(var j=0;j<sel.options.length;j++){if(sel.options[j].value===pi){sel.selectedIndex=j;break}}}}
+function addOpt(sel,rn,pre,dep){var pv=rn+'::'+pre,disp='\u00A0\u00A0'.repeat(dep)+'\uD83D\uDCC1 '+(pre?pre:rn+'（根）'),o=document.createElement('option');o.value=pv;o.textContent=disp;sel.appendChild(o);var arr=data.roots[rn];if(pre){var pts=pre.split('/');for(var i=0;i<pts.length;i++){var f=null;for(var j=0;j<arr.length;j++){if(arr[j].type==='folder'&&arr[j].name===pts[i]){f=arr[j];break}}if(!f)return;arr=f.children}}if(!arr)return;for(var i=0;i<arr.length;i++){if(arr[i].type==='folder'){var cp=pre?pre+'/'+arr[i].name:arr[i].name;addOpt(sel,rn,cp,dep+1)}}}
+function pathOf(id){if(!data)return null;var ks=Object.keys(data.roots);for(var i=0;i<ks.length;i++){var r=pIn(ks[i],id,data.roots[ks[i]],'');if(r)return r}return null}
+function pIn(rn,id,arr,pre){for(var i=0;i<arr.length;i++){if(arr[i].id===id)return rn+'::'+pre;if(arr[i].type==='folder'&&arr[i].children){var cp=pre?pre+'/'+arr[i].name:arr[i].name;var r=pIn(rn,id,arr[i].children,cp);if(r)return r}}return null}
+function saveBm(){var nm=$('bmName').value.trim(),url=$('bmUrl').value.trim();if(!nm||!url){toast('请填写完整','error');return}if(!/^https?:\/\//i.test(url))url='https://'+url;if(!data)data={roots:{},recent:[]};if(editId){var it=findById(editId);if(it){it.name=nm;it.url=url}toast('已更新','success')}else{var tv=$('bmFolder').value,ta=resolvePath(tv),nb={type:'bookmark',name:nm,url:url,id:uid(),lastUsed:0};if(ta)ta.push(nb);else{var fr='_main';if(!data.roots[fr])data.roots[fr]=[];data.roots[fr].push(nb)}toast('已添加','success')}editId=null;$('bmModal').classList.remove('show');buildRecent();save();renderAll()}
+function openNewFd(){$('folderNameIn').value='';$('folderModal').classList.add('show');setTimeout(function(){$('folderNameIn').focus()},100)}
+function saveFd(){var nm=$('folderNameIn').value.trim();if(!nm){toast('请输入名称','error');return}if(!data)data={roots:{},recent:[]};var fr='_main';if(!data.roots[fr])data.roots[fr]=[];data.roots[fr].push({type:'folder',name:nm,id:uid(),children:[]});$('folderModal').classList.remove('show');save();renderAll();toast('已创建','success')}
+function renameFd(id){var it=findById(id);if(!it)return;var n=prompt('重命名文件夹：',it.name);if(n!==null&&n.trim()){it.name=n.trim();save();renderAll();toast('已重命名','success')}}
+function toggleFd(id){var it=findById(id);if(!it)return;it._open=!it._open;save();renderAll()}
+
+// ===== 暴露给 onclick 的全局处理函数 =====
+window.W={
+  // 根分区删除（直接使用原生 confirm，跳过所有 overlay 和 delId 中间环节）
+  delRoot:function(el,ev){
+    if(ev){ev.preventDefault();ev.stopPropagation()}
+    var rn=el.getAttribute('data-rn');
+    if(!rn||!data||!data.roots||!(rn in data.roots))return;
+    var items=data.roots[rn]||[],bm=cntBm(items),fd=cntFd(items);
+    var msg='确定要删除整个「'+rn+'」分区吗？';
+    if(bm+fd>0)msg+='\n（包含 '+fd+' 个文件夹、'+bm+' 个书签）';
+    if(!confirm(msg))return;
+    delete data.roots[rn];
+    buildRecent();save();renderAll();
+    toast('已删除分区「'+rn+'」','info');
+  },
+  // 批量清理空分区
+  cleanupRoots:function(ev){
+    if(ev){ev.preventDefault();ev.stopPropagation()}
+    if(!data||!data.roots)return;
+    var ks=Object.keys(data.roots),del=0;
+    for(var i=0;i<ks.length;i++){
+      var items=data.roots[ks[i]];
+      if(!items||!items.length){
+        delete data.roots[ks[i]];del++;
+      }
+    }
+    if(!del){toast('没有空分区','info');return}
+    buildRecent();save();renderAll();
+    toast('已清理 '+del+' 个空分区','success');
+  },
+  // 最近使用 - 点击
+  clickRecent:function(el){var p=el.closest?el.closest('.recent-item'):el;while(p&&p.className.indexOf('recent-item')<0)p=p.parentElement;if(!p)return;var rid=p.getAttribute('data-rid'),url=p.getAttribute('data-url');if(rid)trackClick(rid);if(url)window.open(url,'_blank')},
+  // 最近使用 - 删除
+  delRecent:function(el,ev){if(ev){ev.preventDefault();ev.stopPropagation()}reqDel(el.getAttribute('data-rid'))},
+  // 书签 - 点击记录
+  clickBm:function(el){var p=el.closest?el.closest('.bm-card'):el;while(p&&p.className.indexOf('bm-card')<0)p=p.parentElement;if(p){var bid=p.getAttribute('data-id');if(bid)trackClick(bid)}},
+  // 书签 - 编辑
+  editBm:function(el,ev){if(ev){ev.preventDefault();ev.stopPropagation()}openEditBm(el.getAttribute('data-id'))},
+  // 书签 - 删除
+  delBm:function(el,ev){if(ev){ev.preventDefault();ev.stopPropagation()}reqDel(el.getAttribute('data-id'))},
+  // 文件夹 - 展开/折叠
+  toggleFd:function(el,ev){if(ev){ev.stopPropagation()}var p=el.closest?el.closest('.folder'):el;while(p&&p.className.indexOf('folder')<0)p=p.parentElement;if(p){var fid=p.getAttribute('data-id');if(fid)toggleFd(fid)}},
+  // 文件夹 - 拖拽手柄（阻止冒泡到文件夹切换）
+  dragHandle:function(ev){if(ev)ev.stopPropagation()},
+  // 文件夹 - 添加书签
+  addBmTo:function(el,ev){if(ev){ev.preventDefault();ev.stopPropagation()}openAddBm(el.getAttribute('data-root'))},
+  // 文件夹 - 重命名
+  renameFd:function(el,ev){if(ev){ev.preventDefault();ev.stopPropagation()}renameFd(el.getAttribute('data-id'))},
+  // 文件夹 - 删除
+  delFd:function(el,ev){if(ev){ev.preventDefault();ev.stopPropagation()}reqDel(el.getAttribute('data-id'))}
+};
+
+// ===== 渲染 =====
+function renderAll(){renderRecent();renderBookmarks($('searchInput').value);renderStats()}
+function renderStats(){if(!data){$('statsBar').innerHTML='';return}var tb=0,tf=0,ks=Object.keys(data.roots);for(var i=0;i<ks.length;i++){tb+=cntBm(data.roots[ks[i]]);tf+=cntFd(data.roots[ks[i]])}$('statsBar').innerHTML='<span>\uD83D\uDCC1 文件夹: '+tf+'</span><span>\uD83D\uDCCC 书签: '+tb+'</span>'}
+
+function renderRecent(){
+  if(!data||!data.recent||!data.recent.length){$('recentSection').style.display='none';return}
+  $('recentSection').style.display='';
+  var h='';
+  for(var i=0;i<data.recent.length;i++){
+    var b=data.recent[i];
+    h+='<div class="recent-item" onclick="W.clickRecent(this)" data-rid="'+esc(b.id)+'" data-url="'+esc(b.url)+'">';
+    h+='<img class="favicon" src="'+fav(b.url)+'" onerror="this.style.display=\'none\'" loading="lazy">';
+    h+='<span class="rname">'+esc(b.name)+'</span>';
+    h+='<button class="rdel" onclick="W.delRecent(this,event)" data-rid="'+esc(b.id)+'" title="删除">\u2715</button>';
+    h+='</div>';
+  }
+  $('recentGrid').innerHTML=h;
+}
+
+function renderBookmarks(filter){
+  var mc=$('mainContent');
+  if(!data||!Object.keys(data.roots).length){
+    mc.innerHTML='<div class="empty-state"><div class="icon">\uD83D\uDD16</div><p>暂无收藏夹数据</p><p style="font-size:13px;color:#bbb;margin-top:8px">点击顶部「同步Edge」按钮导入收藏夹</p></div>';
+    return;
+  }
+  // 迁移旧版"收藏夹栏"到 _main
+  if(data.roots['收藏夹栏']){
+    var old=data.roots['收藏夹栏'];
+    if(!data.roots._main)data.roots._main=[];
+    for(var z=0;z<old.length;z++)data.roots._main.push(old[z]);
+    delete data.roots['收藏夹栏'];save();
+  }
+  var lf=(filter||'').toLowerCase(),h='',ks=Object.keys(data.roots);
+  // 先渲染 _main（最上层，无分区外壳）
+  if(ks.indexOf('_main')>=0){
+    var items=data.roots._main,filt=lf?doFilter(items,lf):items;
+    if(!lf||filt.length)h+=renderItems(filt,'_main');
+  }
+  // 再渲染其他分区
+  for(var i=0;i<ks.length;i++){
+    var rn=ks[i];
+    if(rn==='_main')continue;
+    var items=data.roots[rn],filt=lf?doFilter(items,lf):items;
+    if(lf&&!filt.length)continue;
+    h+='<div class="root-section"><div class="root-title">\uD83D\uDCC1 '+esc(rn);
+    h+='<button class="rtdel" onclick="W.delRoot(this,event)" data-rn="'+esc(rn)+'" title="删除此分区">\u2715 删除</button>';
+    h+='</div>';
+    h+=renderItems(filt,rn);
+    h+='</div>';
+  }
+  mc.innerHTML=h||'<div class="empty-state"><div class="icon">\uD83D\uDD0D</div><p>没有匹配的书签</p></div>';
+}
+
+function doFilter(items,q){var r=[];for(var i=0;i<items.length;i++){var it=items[i];if(it.type==='bookmark'){if(it.name.toLowerCase().indexOf(q)>=0||(it.url&&it.url.toLowerCase().indexOf(q)>=0))r.push(it)}else if(it.type==='folder'){var ch=doFilter(it.children||[],q);if(ch.length>0){r.push({type:'folder',name:it.name,id:it.id,children:ch,_open:true})}}}return r}
+
+function renderItems(items,rn){
+  var h='',buf=[];
+  function flush(){
+    if(!buf.length)return;
+    h+='<div class="bm-grid">';
+    for(var j=0;j<buf.length;j++){
+      var b=buf[j];
+      h+='<div class="bm-card" data-id="'+esc(b.id)+'">';
+      h+='<img class="favicon" src="'+fav(b.url)+'" onerror="this.style.display=\'none\'" loading="lazy">';
+      h+='<a class="bm-link" href="'+esc(b.url)+'" target="_blank" onclick="W.clickBm(this)">'+esc(b.name)+'</a>';
+      h+='<div class="bm-actions">';
+      h+='<button class="btn-sm btn-edit" onclick="W.editBm(this,event)" data-id="'+esc(b.id)+'" title="编辑">\u270F</button>';
+      h+='<button class="btn-sm btn-del" onclick="W.delBm(this,event)" data-id="'+esc(b.id)+'" title="删除">\u2715</button>';
+      h+='</div></div>';
+    }
+    h+='</div>';
+    buf=[];
+  }
+  for(var i=0;i<items.length;i++){
+    var it=items[i];
+    if(it.type==='folder'){
+      flush();
+      var emp=!it.children||!it.children.length,op=!!it._open;
+      h+='<div class="folder'+(emp?' empty-folder':'')+'" data-id="'+esc(it.id)+'">';
+      h+='<div class="folder-header'+(op?' open':'')+'" onclick="W.toggleFd(this,event)">';
+      h+='<span class="drag-handle" onclick="W.dragHandle(event)" title="拖动排序">\u2630</span>';
+      h+='<span class="folder-arrow">\u25B6</span>';
+      h+='<span class="folder-name">'+esc(it.name)+'</span>';
+      h+='<span class="folder-count">('+cntBm(it.children)+')</span>';
+      h+='<div class="folder-actions">';
+      h+='<button class="btn-sm btn-add-child" onclick="W.addBmTo(this,event)" data-id="'+esc(it.id)+'" data-root="'+esc(rn)+'" title="添加书签">+</button>';
+      h+='<button class="btn-sm btn-rename" onclick="W.renameFd(this,event)" data-id="'+esc(it.id)+'" title="重命名">\u270F</button>';
+      h+='<button class="btn-sm btn-del" onclick="W.delFd(this,event)" data-id="'+esc(it.id)+'" title="删除">\u2715</button>';
+      h+='</div></div>';
+      h+='<div class="folder-children'+(op?' show':'')+'">';
+      if(it.children&&it.children.length)h+=renderItems(it.children,rn);
+      h+='<a class="add-bm-link" onclick="event.preventDefault();W.addBmTo(this,event)" data-folder-id="'+esc(it.id)+'" data-root="'+esc(rn)+'">+ 添加书签</a>';
+      h+='</div></div>';
+    }else if(it.type==='bookmark'){
+      buf.push(it);
+    }
+  }
+  flush();
+  return h;
+}
+
+// ===== 拖拽 =====
+function clearDrop(){var els=document.querySelectorAll('.drop-before,.drop-after,.drop-inside');for(var i=0;i<els.length;i++)els[i].classList.remove('drop-before','drop-after','drop-inside')}
+function getItemEl(el){while(el&&el!==document.getElementById('mainContent')){if(el.classList&&(el.classList.contains('bm-card')||el.classList.contains('folder')))return el;el=el.parentElement}return null}
+
+function initDrag(){
+  var mc=$('mainContent');
+  mc.addEventListener('mousedown',function(e){
+    if(!e.target.closest('.drag-handle'))return;
+    var it=getItemEl(e.target);if(!it)return;
+    it.setAttribute('draggable','true');
+    function up(){it.setAttribute('draggable','false');document.removeEventListener('mouseup',up)}
+    document.addEventListener('mouseup',up);
+  });
+  mc.addEventListener('dragstart',function(e){
+    var it=getItemEl(e.target);if(!it||it.getAttribute('draggable')!=='true'){e.preventDefault();return}
+    dragSt={id:it.getAttribute('data-id'),el:it};e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragSt.id);
+    setTimeout(function(){it.classList.add('dragging')},0);
+  });
+  mc.addEventListener('dragover',function(e){
+    if(!dragSt)return;var te=getItemEl(e.target);if(!te||te.getAttribute('data-id')===dragSt.id||isDesc(dragSt.id,te.getAttribute('data-id')))return;
+    e.preventDefault();e.dataTransfer.dropEffect='move';clearDrop();
+    var r=te.getBoundingClientRect(),y=e.clientY-r.top,h=r.height;
+    if(te.classList.contains('folder')&&y>h*.25&&y<h*.75)te.classList.add('drop-inside');
+    else if(y<h/2)te.classList.add('drop-before');
+    else te.classList.add('drop-after');
+  });
+  mc.addEventListener('dragleave',function(e){var el=getItemEl(e.target);if(el)el.classList.remove('drop-before','drop-after','drop-inside')});
+  mc.addEventListener('drop',function(e){
+    if(!dragSt)return;e.preventDefault();e.stopPropagation();
+    var te=getItemEl(e.target);if(!te||te.getAttribute('data-id')===dragSt.id){cleanup();return}
+    var sid=dragSt.id,tid=te.getAttribute('data-id'),isIn=te.classList.contains('drop-inside'),isBf=te.classList.contains('drop-before');
+    clearDrop();var si=findById(sid);if(!si){cleanup();return}
+    if(isIn&&si.type==='folder'&&isDesc(sid,tid)){toast('不能移入子文件夹','error');cleanup();return}
+    var sp=findParent(sid);if(sp)for(var i=0;i<sp.length;i++){if(sp[i].id===sid){sp.splice(i,1);break}}
+    if(isIn){var ti=findById(tid);if(ti&&ti.type==='folder'){if(!ti.children)ti.children=[];ti.children.push(si);ti._open=true}}
+    else{var tp=findParent(tid);if(tp)for(var j=0;j<tp.length;j++){if(tp[j].id===tid){tp.splice(isBf?j:j+1,0,si);break}}}
+    cleanup();save();renderAll();toast('已移动','success');
+  });
+  mc.addEventListener('dragend',function(){cleanup()});
+  function cleanup(){clearDrop();if(dragSt&&dragSt.el){dragSt.el.classList.remove('dragging');dragSt.el.setAttribute('draggable','false')}dragSt=null}
+}
+
+// ===== 静态事件绑定（仅绑定不变的 DOM 元素） =====
+function bindStaticEvents(){
+  // 头部按钮
+  $('btnImport').addEventListener('click',function(){$('fileInput').click()});
+  $('btnExport').addEventListener('click',doExport);
+  $('btnAddBm').addEventListener('click',function(){openAddBm()});
+  $('btnAddFolder').addEventListener('click',openNewFd);
+  $('btnSync').addEventListener('click',function(){$('syncModal').classList.add('show')});
+  $('btnCleanup').addEventListener('click',function(){W.cleanupRoots()});
+
+  // 文件选择
+  $('fileInput').addEventListener('change',function(){if(this.files[0])handleImport(this.files[0]);this.value=''});
+
+  // 搜索
+  $('searchInput').addEventListener('input',function(){renderBookmarks(this.value)});
+
+  // 书签模态框
+  $('bmCancelBtn').addEventListener('click',function(){$('bmModal').classList.remove('show');editId=null});
+  $('bmSaveBtn').addEventListener('click',saveBm);
+
+  // 文件夹模态框
+  $('folderCancelBtn').addEventListener('click',function(){$('folderModal').classList.remove('show')});
+  $('folderSaveBtn').addEventListener('click',saveFd);
+
+  // 同步模态框
+  $('syncCancelBtn').addEventListener('click',function(){$('syncModal').classList.remove('show')});
+  $('syncSelectBtn').addEventListener('click',function(){$('syncModal').classList.remove('show');$('fileInput').click()});
+  $('btnCopyPath').addEventListener('click',function(){
+    var p='%LOCALAPPDATA%\\Microsoft\\Edge\\User Data\\Default\\Bookmarks';
+    if(navigator.clipboard)navigator.clipboard.writeText(p).then(function(){toast('已复制','success')});
+    else{var t=document.createElement('textarea');t.value=p;t.style.cssText='position:fixed;left:-9999px';document.body.appendChild(t);t.select();try{document.execCommand('copy');toast('已复制','success')}catch(e){}document.body.removeChild(t)}
+  });
+
+  // 确认删除弹窗
+  $('confirmNo').addEventListener('click',function(){delId=null;$('confirmOverlay').classList.remove('show')});
+  $('confirmYes').addEventListener('click',doDel);
+
+  // 模态框背景关闭
+  ['bmModal','folderModal','syncModal','confirmOverlay'].forEach(function(id){
+    $(id).addEventListener('click',function(e){if(e.target===this){this.classList.remove('show');delId=null;editId=null}})
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){['bmModal','folderModal','syncModal','confirmOverlay'].forEach(function(id){$(id).classList.remove('show')});editId=null;delId=null}
+  });
+
+  // 拖拽（仅 drag 事件用事件监听，click 全部用 onclick）
+  initDrag();
+}
+
+// ===== 启动 =====
+load();
+bindStaticEvents();
+if(data){buildRecent();renderAll()}
+
+})();
+</script>
+</body>
+</html>
